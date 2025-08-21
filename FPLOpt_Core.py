@@ -1,3 +1,5 @@
+#TODO add subs handling into max_points_transfers, otherwise theres a little bit of manual work to make the overall team have the correct no. forwards/mids/etcs 
+
 import pandas as pd
 from pulp import *
 from matplotlib import pyplot as plt
@@ -176,7 +178,7 @@ def max_points_transfers_model(
         positions_d, #Dict of bounds on no. players per position
         teams_d,  #dict of teams and upper bound of selectable players per team (3 per team overall, but needs to be treated carefully when optimising subs seperately to starters )
         gameweek, #Up to 38, needed to calc expected points accurately
-        NumFreeTransfers = 1 # Number of free transfers, default to 1 but these stack up to 5 is not used in previous gameweeks
+        NumFreeTransfers = 1 # Number of free transfers, default to 1 but these stack up to 5 if not used in previous gameweeks
         ):
     # Define the optimization problem
     model = LpProblem("FantasyFootball", LpMaximize)

@@ -14,19 +14,24 @@ from FPLOpt_Core import *
 #         all_players_df["points"] *= 38/39
 # print(all_players_df["points"])
 
-###USER INPUT VARIABLES
+###################################
+# USER INPUT VARIABLES
+###################################
 #update for each gameweek
-gameweek = 1
+current_gameweek = 1 # Used to normalise the expected points data, and scale total points calculation in the objective function by the proportion of game weeks remaining (i.e. the transfer penalty becomes more significant the fewer weeks are left in the season )
 budget = 0
 numFreeTransfers = 1
+data_path = "data\players_raw_gw1.csv"
+
+#END
+###################################
+
 all_players_df = (
     Players("data\players_raw_gw1.csv")
-    .NormaliseCurrentData(gameweek)
+    .NormaliseCurrentData(current_gameweek)
     .data
     )
 p = Transfer_Parameters(all_players_df)
-
-
 
 #Run transfers model on current lineup for to find best transfers for current weeks data (different prices, points, chance of playing etc)
 current_team_df = pd.read_csv("current_team.csv")
@@ -37,7 +42,7 @@ result = max_points_transfers_model(
             budget,
             p.starters_positions_bounds,
             p.teams_dict,
-            gameweek,
+            current_gameweek,
             numFreeTransfers)
     
 
