@@ -16,17 +16,21 @@ class Players:
         df = df.set_index('id')
 
         df['total_games'] = df['minutes'] / 90
-        df = df[['first_name', 'second_name', 'element_type', 'team', 'now_cost', 'minutes',   
+        df = df[['first_name', 'second_name', "web_name", 'element_type', 'team', 'now_cost', 'minutes',   
                  'chance_of_playing_next_round','total_games', 'total_points']]
         #Remove players with no chance of playing by multiplying points by chance of playing
         df['chance_of_playing_next_round'] = pd.to_numeric(df['chance_of_playing_next_round'], errors='coerce')
         df['chance_of_playing_next_round'] = df['chance_of_playing_next_round'].fillna(100) #treat Na as 100% chance of playing
-        # df = df[(df['chance_of_playing_next_round'] > 0) | (df['chance_of_playing_next_round'].isna())]
+        print(df.loc[467][["second_name","total_points", "chance_of_playing_next_round"]])
         df["total_points"] = df["total_points"] * df["chance_of_playing_next_round"]/100
-        # print(df.loc[432][["second_name","total_points", "chance_of_playing_next_round"]])
+        print(df.loc[467][["second_name","total_points", "chance_of_playing_next_round"]])
+        
 
-        #Rename for legibility
+        ##legibility
+        #Rename columns
         df = df.rename(columns={'now_cost': 'cost', 'element_type': 'position', 'total_points': 'points'})
+        
+        
         # Create dummy variables (a single 0/1 column for each team and position) and glue them to the original dataframe
         df['team'] = df['team'].astype('category')
         df['position'] = df['position'].astype('category')
@@ -38,6 +42,14 @@ class Players:
             'position_4': 'forward'
         })
         df = pd.concat([df, dummies], axis=1)
+
+        #add position names
+        # df = df.sort_values(by='position')
+        df["position_name"] = df.apply(
+            lambda row : next(position for position in ["keeper", "defender", "midfielder", "forward"] if row[position])
+            ,axis = 1
+        )
+
         return df
     
     def NormaliseCurrentData(self, gameweek): 
@@ -63,14 +75,21 @@ class Parameters:
     subs = squad_size - starters
     tot_budget = 1000
     budget_split = range(700, tot_budget - 125, 5)
-    #sum of tot_[position] doesn't equal squad_size, different formations allowed 
+    #Must have this many players of each position 
+    #TODO refactor any uses of tot_xxx to use positions_totals
     tot_keepers = 2
     tot_defenders = 5
     tot_midfielders = 5
     tot_forwards = 3
-    per_team = 3 #Only 3 players from each (real life) team can be in squad
+    positions_totals = {
+            'keepers': 2,
+            'defenders': 5,
+            'midfielders': 5,
+            'forwards': 3
+            }
+    per_team = 3 #Max 3 players from each team in the league can be in squad
     tot_gameweeks = 38
-    subs_weighting = 0.1 #DEFUNCT
+    subs_weighting = 0.1 # Weight subs points to significantly less than starters point. Ensures budget isn't wasted on subs over starters, but forces model to pick best performing subs (as opposed to completely ignoring points contributions from subs)
     subs_games_threshold = 0.5 #Proportion of games needed to consider a player for subs
     subs_min_games = round(subs_games_threshold * tot_gameweeks)
     starters_positions_bounds = {
@@ -87,14 +106,15 @@ class Parameters:
             'forwards': 3
         }
     }
-    def __init__ (self, df):
+    def __init__ (self, df): 
         self.teams = df['team'].unique()
         self.teams_dict = dict(zip([f'team_{t}' for t in self.teams], [Parameters.per_team for i in self.teams]))
+
 
 class StartingLineup_Parameters (Parameters): 
     #Override base Parameters attributes as needed
     pass
-class Transfer_Parameters (Parameters): 
+class Transfer_Parameters (Parameters): #Honestly thought we'd need these, turns out no.
     #Override base Parameters attributes as needed
     pass
 
@@ -175,8 +195,7 @@ def max_points_transfers_model(
         fn_df, #dataframe of players + associated data to chose from
         current_players_df, #ids of players currently in squad
         budget,  #in £xe4 (1000 = £10m), because that's what the dataset uses 
-        positions_d, #Dict of bounds on no. players per position
-        teams_d,  #dict of teams and upper bound of selectable players per team (3 per team overall, but needs to be treated carefully when optimising subs seperately to starters )
+        parameters: Parameters,
         gameweek, #Up to 38, needed to calc expected points accurately
         NumFreeTransfers = 1 # Number of free transfers, default to 1 but these stack up to 5 if not used in previous gameweeks
         ):
@@ -186,10 +205,11 @@ def max_points_transfers_model(
     # Define decision variables
     decision_vars = LpVariable.dicts("player", fn_df.index, 0, 1, LpInteger)
 
+    bounded_transfer_points_deducted = LpVariable("min_transfer_points_deducted", lowBound=0, cat = "Integer") #only used to prevent transfer penalty from going negative
+
     #Helper functions for writing constraints
     def Total(column_name: str):
         return sum(fn_df.loc[i, column_name] * decision_vars[i] for i in fn_df.index)
-    #FIXME Dont use varValue as input, use 1 - decision_vars[i] if you need "where not in"
     def players_sold_cost(): 
         return (budget + fn_df.loc[id, 'cost'] * (1 - decision_vars[id]) for id in current_players_ids)
     def players_bought_cost():
@@ -199,8 +219,8 @@ def max_points_transfers_model(
     # def players_bought_ids_result(): return [id for id in fn_df.index if decision_vars[id].varValue == 1 and id not in current_players_ids]
     # def players_bought_cost_result(): return sum(fn_df.loc[id, 'cost'] for id in players_bought_ids())
     def numTransfers(): return sum(1 - decision_vars[id] for id in current_players_ids) #number of players sold, used to calc transfer points deducted  
-    def transfer_points_deducted(): return 4 * (numTransfers() - NumFreeTransfers)
-    def totalPoints(): return Total('points') * gameweek_scaling - transfer_points_deducted()
+    # def transfer_points_deducted(): return 4 * (numTransfers() - NumFreeTransfers)
+    def totalPoints(): return Total('points') * gameweek_scaling - bounded_transfer_points_deducted
     ObjectiveFunction = totalPoints
 
 
@@ -209,6 +229,9 @@ def max_points_transfers_model(
     current_players_ids = current_players_df[current_players_df['role'] == 'starter']['id'].tolist()  #ids of current players
     num_players = len(current_players_ids) #this was an arg in the starting lineup model, but can infer it here
     gameweek_scaling = (Parameters.tot_gameweeks - gameweek) / Parameters.tot_gameweeks
+    positions_d = parameters.starters_positions_bounds #Dict of bounds on no. players per position
+    teams_d = parameters.teams_dict  #dict of teams and upper bound of selectable players per team (3 per team overall, but needs to be treated carefully when optimising subs seperately to starters )
+  
 
     print("\nSanity Checks:")
     print(f"Budget: {budget}")
@@ -238,16 +261,10 @@ def max_points_transfers_model(
 
     #Constraints - added or updated for transfers
     # model += Total('cost') <= budget + players_sold_cost, "Budget"
+    #FIXME add budget to the cost limit here
     model += players_bought_cost() <= players_sold_cost(), "Budget" 
+    model += bounded_transfer_points_deducted >= 4 * (numTransfers() - NumFreeTransfers) 
     
-    #TESTONLY:
-    #want to see if limiting number of transfers helps convergence
-#     model += \
-#     (
-#     lpSum([1 - decision_vars[id] for id in current_players_ids]) <= 1,
-#     "NumFreeTransfers" #why does this constaint work
-#     #why does setting to 0 make it infeasible? Should be able to 
-# )
 
 
     # Solve the model
@@ -346,6 +363,228 @@ def max_points_transfers_model(
         'transfer_points_deducted': transfer_points_deducted,
         'current_players_total_points':current_players_TotalPoints()
     }
+
+#TODO SUBS should only earn 10% points but must player over the threshold
+def max_points_transfers_with_subs_model( 
+#Less generalised version of max_points_transfers_model, whole team needs to be treated together as
+#   - Starting lineup has different bounds on positions numbers than the overral team (e.g. need 3 fwds total even if only one on the pitch). So trying to transfer only the starting lineup gives infeasible solutions as the existing subs aren't necessarily compatible (and constraining the transfers to the currently used formation would be silly)
+#   -  Trying to optimise subs seperately to starters would be inefficient as they don't contribute much to points but could be useful to sell in order to make up the budget to afford a starting player.
+        all_players_df, #dataframe of players + associated data to chose from
+        current_players_df, #ids of players currently in squad
+        budget,  #in £xe4 (1000 = £10m), because that's what the dataset uses 
+        parameters: Parameters,
+        gameweek, #Up to 38, needed to calc expected points accurately
+        NumFreeTransfers = 1 # Number of free transfers, default to 1 but these stack up to 5 if not used in previous gameweeks
+        ):
+    # Define the optimization problem
+    model = LpProblem("FantasyFootball", LpMaximize)
+
+    # Define decision variables
+    # Need to constrain starters to be not in subs
+    starters = LpVariable.dicts("starter", all_players_df.index, 0, 1, LpInteger)
+    subs = LpVariable.dicts("sub", all_players_df.index, 0, 1, LpInteger)
+
+    #Other variables
+    bounded_transfer_points_deducted = LpVariable("min_transfer_points_deducted", lowBound=0, cat = "Integer") #only used to prevent transfer penalty from going negative
+
+    #Helper functions for writing constraints
+    def players(): return { id : starters[id] + subs[id] for id in starters }
+    def Total(column_name: str, decisions_d: LpVariable.dicts):
+        return sum(all_players_df.loc[i, column_name] * decisions_d[i] for i in all_players_df.index)
+    def players_sold_cost(): return sum(
+        all_players_df.loc[id, 'cost'] 
+        * (1 - players()[id]) #  == sum if player not in decisions
+        for id in all_players_df.index 
+        if id in current_players_ids
+        )
+    def players_bought_cost(): return sum(
+        all_players_df.loc[id, 'cost'] 
+        * players()[id] 
+        for id in all_players_df.index 
+        if id not in current_players_ids
+        )
+    def numTransfers(): return sum(1 - players()[id] for id in current_players_ids) #number of players sold, used to calc transfer points deducted  
+    def totalPoints(): return (
+        ( Total("points", starters) + Total("points", subs) * parameters.subs_weighting )
+            * gameweek_scaling 
+        - bounded_transfer_points_deducted
+        )
+    ObjectiveFunction = totalPoints
+
+    #helper variables
+    def players_varValue(id): return starters[id].varValue + subs[id].varValue
+    current_players_ids = current_players_df['id'].tolist()  #ids of current players
+    current_starters_ids = current_players_df[current_players_df["role"] == "starter"]['id'].tolist()  
+    current_subs_ids = current_players_df[current_players_df["role"] == "sub"]['id'].tolist()  
+    num_players = len(current_players_ids) #this was an arg in the starting lineup model, but can infer it here
+    gameweek_scaling = (parameters.tot_gameweeks - gameweek) / parameters.tot_gameweeks
+    positions_d = parameters.starters_positions_bounds, #Dict of bounds on no. players per position
+    teams_d = parameters.teams_dict  #dict of teams and upper bound of selectable players per team (3 per team overall, but needs to be treated carefully when optimising subs seperately to starters )
+ 
+    
+    print("\nSanity Checks:")
+    print(f"Budget: {budget}")
+    print(f"Current players: {current_players_ids}")
+    print(f"Number of players: {num_players}")
+    print(f"Gameweek scaling: {gameweek_scaling}")
+    print()
+
+    # Objective function (maximize total points)
+    # This is given by total points scaled by proportion of gameweeks 
+    model += ObjectiveFunction(), "TotalPoints"  
+
+    ### Constraints ###
+
+    # Number of players 
+    model += ( sum(players()[i] for i in all_players_df.index) 
+              == num_players, "NumberOfPlayers" )
+    model += ( sum(starters[i] for i in all_players_df.index) 
+              == parameters.starters, "NumberOfStarters" )
+    model += ( sum(subs[i] for i in all_players_df.index) 
+              == parameters.subs, "NumberOfSubs" )
+
+    for id in all_players_df.index:
+        #Starters can't appear in subs
+        model += starters[id] + subs[id] <= 1, f"StartersAreNotSubs{id}"
+        #each sub must play more than the threshold
+        model += all_players_df.loc[id, "total_games"] >= parameters.subs_games_threshold * subs[id], f"SubsMinGames_{id}"
+
+    #No. starters & players per Position 
+    for position in ['keeper', 'defender', 'midfielder', 'forward']:
+        # starter bounds
+        model += ( Total(position, starters) 
+                  <= parameters.starters_positions_bounds['upper'][f'{position}s'], f"starting {position}s upper" )
+        model += ( Total(position, starters) 
+                  >= parameters.starters_positions_bounds['lower'][f'{position}s'], f"starting {position}s lower" )
+        # squad totals
+        model += ( Total(position, players()) 
+                  == parameters.positions_totals[f'{position}s'], f"squad {position}s total" )
+
+    # No. players from each Team
+    for team, places_left in teams_d.items():
+        model += Total(team, players()) <= places_left, team
+
+    #players bought <= budget + players sold
+    model += players_bought_cost() <= players_sold_cost() , "Budget" 
+    
+    #Transfer penalty must be >= 0
+    model += ( bounded_transfer_points_deducted 
+              >= 4 * (numTransfers() - NumFreeTransfers), "transferPenaltyisPositive" )
+
+    # Solve the model
+    # model.writeMPS("debug.mps")
+    model.solve(PULP_CBC_CMD(msg=False))
+    print(LpStatus[model.status])
+    model_success = LpStatus[model.status]
+
+
+    #helper functions for outputting results 
+    #Mostly clones of helper functions above but using decision_vars.varValue. Is there a nicer way to do that?
+    def Total_result(column_name: str, decisions_d: LpVariable.dicts):
+        return sum(all_players_df.loc[i, column_name] * decisions_d[i].varValue for i in all_players_df.index)
+    
+    def players_sold_ids_result(): return [id for id in current_players_ids if players_varValue(id) == 0]
+    def players_sold_cost_result(): return 0 + sum(all_players_df.loc[id, 'cost'] for id in players_sold_ids_result())
+    def players_bought_ids_result(): return [id for id in all_players_df.index if players_varValue(id) == 1 and id not in current_players_ids]
+    def players_bought_cost_result(): return sum(all_players_df.loc[id, 'cost'] for id in players_bought_ids_result())
+    def numTransfers_result(): return sum(1 - players_varValue(id) for id in current_players_ids) #number of players sold, used to calc transfer points deducted  
+    # def numTransfers_result(): return sum(1 - (starters[id].varValue + subs[id].varValue) 
+                                        #   for id in current_players_ids) #number of players sold, used to calc transfer points deducted  
+    # def numTransfers_result(): return len(players_sold_ids_result()) #number of players sold, used to calc transfer points deducted      
+    def transfer_points_deducted_result(): return max(4 * (numTransfers_result() - NumFreeTransfers), 0)
+    
+    subs_contribution_to_total_points = 0 #Ignoring subs points contributions seems most sensible for results
+    #Could set this to parameters.subs_weighting, but that's not a well motivated number (it's really just used to ensure the model prioritises subs with more points).  
+    def totalPoints_result() -> int :
+        return (
+                Total_result("points", starters)
+            +   Total_result("points", subs) * subs_contribution_to_total_points #Subs
+            ) * gameweek_scaling - transfer_points_deducted_result()
+        
+    def current_players_TotalPoints() -> int : #FIXME Add subs scaling
+        return (
+                sum(all_players_df.loc[id, 'points'] for id in current_starters_ids)
+            +   sum(all_players_df.loc[id, 'points'] for id in current_subs_ids) * subs_contribution_to_total_points 
+        ) * gameweek_scaling
+
+    print(f"numTransfers_result: {numTransfers_result()}")
+    print(f"transfer_points_deducted_result: {transfer_points_deducted_result()}")
+    print(f"totalPoints_result: {totalPoints_result()}")
+    print(f"new_players_ids:{[i for i in all_players_df.index if players_varValue(i) == 1]}")
+    print(f"current_players_ids:{current_players_ids}")
+    print(f"current_players_TotalPoints: {current_players_TotalPoints()}")
+    
+
+
+    ### Calculate and print summary
+    total_points = totalPoints_result()
+    total_cost = players_bought_cost_result()
+    budget_remaining = budget + players_sold_cost_result() - total_cost
+    selected_players = [i for i in all_players_df.index if players_varValue(i) == 1]
+    selected_starters = [i for i in all_players_df.index if starters[i].varValue == 1]
+    selected_subs = [i for i in all_players_df.index if subs[i].varValue == 1]
+    
+    # players_sold_ids = [id for id in current_players_ids if decision_vars[id].varValue == 0] #ids of players sold
+    # players_sold_cost = 0 + sum(fn_df.loc[id, 'cost'] for id in players_sold_ids) #money made from selling players
+    #numTransfers = sum(decision_vars[i] for i in fn_df.index if i not in current_players_ids)
+    numTransfers = len(players_sold_ids_result())
+    #this max function is causing a problem 
+    transfer_points_deducted = 4 * max(numTransfers - NumFreeTransfers, 0)
+
+
+
+    # selected_players_names = [f"{fn_df.loc[i, 'first_name']} {fn_df.loc[i, 'second_name']}" for i in fn_df.index if
+    #                           decision_vars[i].varValue == 1]
+    selected_players_fn_df = all_players_df.loc[selected_players]
+
+    # Categorize players by position
+    model_keepers = selected_players_fn_df[selected_players_fn_df['keeper'] == 1].index.tolist()
+    model_defenders = selected_players_fn_df[selected_players_fn_df['defender'] == 1].index.tolist()
+    model_midfielders = selected_players_fn_df[selected_players_fn_df['midfielder'] == 1].index.tolist()
+    model_forwards = selected_players_fn_df[selected_players_fn_df['forward'] == 1].index.tolist()
+    model_positions = {
+        'keepers': model_keepers,
+        'defenders': model_defenders,
+        'midfielders': model_midfielders,
+        'forwards': model_forwards
+    }
+
+    # Categorize players by team
+    model_teams = {}
+    for team in teams_d:
+        model_teams[team] = len(selected_players_fn_df[selected_players_fn_df[team] == 1].index.tolist())
+
+    # ModelResult = namedtuple('ModelResult', 
+    #                          ['total_points', 'total_cost', 'budget_remaining', 
+    #                           'model_positions',
+    #                           'model_teams', 'selected_players', 'model_success'
+    #                           , 'players_sold_ids', 'players_sold_cost', 'numTransfers', 'transfer_points_deducted']
+    #                         )
+
+    # return ModelResult(total_points, total_cost, budget_remaining, 
+    #                    model_positions, model_teams, model_success,
+    #                    selected_players,
+    #                    players_sold_ids_result(), players_sold_cost_result(), numTransfers, 
+    #                    transfer_points_deducted)
+    return {
+        'total_points': total_points,
+        'total_cost': total_cost,
+        'budget_remaining': budget_remaining,
+        'model_positions': model_positions,
+        'model_teams': model_teams,
+        'model_success': model_success,
+        'selected_players': selected_players,
+        'selected_starters': selected_starters,
+        'selected_subs': selected_subs,
+        'players_sold_ids': players_sold_ids_result(),
+        'players_sold_cost': players_sold_cost_result(),
+        'players_bought_ids': players_bought_ids_result(),
+        'players_bought_cost': players_bought_cost_result(),
+        'numTransfers': numTransfers,
+        'transfer_points_deducted': transfer_points_deducted,
+        'current_players_total_points':current_players_TotalPoints()
+    }
+
 def remove_players(old_df, remove_lst):
     new_df = old_df.drop(index=remove_lst)
     return new_df
