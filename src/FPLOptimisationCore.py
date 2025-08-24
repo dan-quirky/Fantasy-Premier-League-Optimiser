@@ -2,7 +2,7 @@
 # USER INPUT VARIABLES
 ######################################################################
 
-Default_Data_Path =  "data\Start_2025-6_players_raw.csv" #Expected to be previous seasons' data
+Default_Data_Path =  """data\\Start_2025-6_players_raw.csv""" #Expected to be previous seasons' data
 
 #END
 ######################################################################
@@ -25,9 +25,7 @@ class Players:
         #Remove players with no chance of playing by multiplying points by chance of playing
         df['chance_of_playing_next_round'] = pd.to_numeric(df['chance_of_playing_next_round'], errors='coerce')
         df['chance_of_playing_next_round'] = df['chance_of_playing_next_round'].fillna(100) #treat Na as 100% chance of playing
-        print(df.loc[467][["second_name","total_points", "chance_of_playing_next_round"]])
         df["total_points"] = df["total_points"] * df["chance_of_playing_next_round"]/100
-        print(df.loc[467][["second_name","total_points", "chance_of_playing_next_round"]])
         
 
         ##legibility
@@ -66,7 +64,6 @@ class Players:
             .reindex(self.data.index, fill_value=0) #Add 0 if index not in current data
             ) 
         self.data["points"] *= 38 / (38 + gameweek)
-        print (self.data["points"])
         return self
 
 

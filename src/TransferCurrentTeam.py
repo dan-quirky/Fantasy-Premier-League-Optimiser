@@ -12,8 +12,8 @@
 current_gameweek = 1 # Used to normalise the expected points data, and scale total points calculation in the objective function by the proportion of game weeks remaining (i.e. the transfer penalty becomes more significant the fewer weeks are left in the season )
 budget = 0 #in millions of £
 numFreeTransfers = 1
-current_team_path = "output\current_team.csv"
-data_path = "data\players_raw_gw1.csv"
+current_team_path = r"output\current_team.csv"
+data_path = r"data\players_raw_gw1.csv"
 
 #END
 ######################################################################
@@ -26,7 +26,7 @@ import pandas as pd
 budget = budget * 10 #convert budget to weird units data uses
 
 all_players_df = (
-    Players("data\players_raw_gw1.csv")
+    Players(data_path)
     .NormaliseCurrentData(current_gameweek)
     .data
     )
