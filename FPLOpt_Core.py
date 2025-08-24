@@ -404,7 +404,8 @@ def max_points_transfers_with_subs_model(
         if id not in current_players_ids
         )
     def numTransfers(): return sum(1 - players()[id] for id in current_players_ids) #number of players sold, used to calc transfer points deducted  
-    def totalPoints(): return (
+    def totalPoints(): # sum total points scaled by proportion of gameweeks, with subs weighted much less than starters
+        return (
         ( Total("points", starters) + Total("points", subs) * parameters.subs_weighting )
             * gameweek_scaling 
         - bounded_transfer_points_deducted
@@ -430,7 +431,6 @@ def max_points_transfers_with_subs_model(
     print()
 
     # Objective function (maximize total points)
-    # This is given by total points scaled by proportion of gameweeks 
     model += ObjectiveFunction(), "TotalPoints"  
 
     ### Constraints ###

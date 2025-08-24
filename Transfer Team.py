@@ -16,9 +16,9 @@ import os
 #         all_players_df["points"] *= 38/39
 # print(all_players_df["points"])
 
-###################################
+######################################################################
 # USER INPUT VARIABLES
-###################################
+######################################################################
 #update for each gameweek
 current_gameweek = 1 # Used to normalise the expected points data, and scale total points calculation in the objective function by the proportion of game weeks remaining (i.e. the transfer penalty becomes more significant the fewer weeks are left in the season )
 budget = 0 #in millions of £
@@ -27,7 +27,7 @@ current_team_path = "current_team.csv"
 data_path = "data\players_raw_gw1.csv"
 
 #END
-###################################
+######################################################################
 budget = budget * 10 #convert budget to weird units data uses
 
 all_players_df = (
