@@ -3,6 +3,3 @@
 !/src
 !/.gitignore
 !/requirements.txt
-!/output
-!/data/players_raw_gw1.csv
-!/data/Start_2025-6_players_raw.csv
