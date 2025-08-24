@@ -1,14 +1,20 @@
-### Optimise Fantasy Premier League starting team with substitutes
+### Optimise a Fantasy Premier League starting team including substitutes
+#Expects players_raw.csv data from https://github.com/vaastav/Fantasy-Premier-League
+######################################################################
+# USER INPUT VARIABLES
+######################################################################
 
-from FPLOpt_Core import *
+#Nothing to set here, default data path should be configured in FPLOptimisationCore
+
+#END
+######################################################################
+from FPLOptimisationCore import Players, StartingLineup_Parameters, max_points_model, remove_players
+from datetime import datetime 
+import os
+import pandas as pd
 
 df = Players().data
 p = StartingLineup_Parameters(df)
-
-#temp override budget split for testing
-# p.budget_split = [815,    820] 
-
-
 
 #Loop over different budgets to find best starters team with acceptable substitutes 
 results = []
@@ -99,9 +105,12 @@ optimal_team['role'] = ['starter' if i in optimal_starters_indices else 'sub' fo
 optimal_team = optimal_team.sort_values(by=['position', 'role'], ascending=[True, True])
 print("Optimal Team:")
 print(optimal_team[['first_name', 'second_name', 'position', 'team', 'cost', 'points', 'role']])
-# optimal_team.to_csv("starting_team.csv")
 
-optimal_team.to_csv("starting_team.csv")
+#output data
+output_name = f"Starting_Squad_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv"
+output_path = os.path.join("output",output_name)
+print(f"Saving as \"{output_name}\"")
+optimal_team.to_csv(output_path)
 
 
 # Plot the total points vs. budget split
