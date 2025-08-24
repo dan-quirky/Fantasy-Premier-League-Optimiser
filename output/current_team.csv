@@ -1,0 +1,16 @@
+id,first_name,second_name,position,team,cost,minutes,chance_of_playing_next_round,total_games,points,team_1,team_2,team_3,team_4,team_5,team_6,team_7,team_8,team_9,team_10,team_11,team_12,team_13,team_14,team_15,team_16,team_17,team_18,team_19,team_20,keeper,defender,midfielder,forward,role
+287,Jordan,Pickford,1,9,55,3420,,37.61904762,158,False,False,False,False,False,False,False,False,True,False,False,False,False,False,False,False,False,False,False,False,True,False,False,False,starter
+2,Kepa,Arrizabalaga Revuelta,1,1,45,2790,,31.17647059,106,True,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,True,False,False,False,sub
+256,Daniel,Muñoz Mejía,2,8,55,3229,,37.36842105,142,False,False,False,False,False,False,False,True,False,False,False,False,False,False,False,False,False,False,False,False,False,True,False,False,starter
+403,Joško,Gvardiol,2,13,60,3278,,37.31707317,153,False,False,False,False,False,False,False,False,False,False,False,False,True,False,False,False,False,False,False,False,False,True,False,False,starter
+505,Nikola,Milenković,2,16,55,3330,,37.17948718,145,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,True,False,False,False,False,False,True,False,False,starter
+260,Marc,Guéhi,2,8,45,3059,,34.11764706,116,False,False,False,False,False,False,False,True,False,False,False,False,False,False,False,False,False,False,False,False,False,True,False,False,sub
+610,Aaron,Wan-Bissaka,2,19,45,3154,,35.75757576,118,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,True,False,False,True,False,False,sub
+82,Antoine,Semenyo,3,4,70,3202,,36.66666667,165,False,False,False,True,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,True,False,starter
+381,Mohamed,Salah,3,12,145,3374,,37.8021978,344,False,False,False,False,False,False,False,False,False,False,False,True,False,False,False,False,False,False,False,False,False,False,True,False,starter
+119,Bryan,Mbeumo,3,14,80,3415,,38.06451613,236,False,False,False,False,False,False,False,False,False,False,False,False,False,True,False,False,False,False,False,False,False,False,True,False,starter
+489,Jacob,Murphy,3,15,65,2356,,35.33333333,159,False,False,False,False,False,False,False,False,False,False,False,False,False,False,True,False,False,False,False,False,False,False,True,False,starter
+167,Carlos,Baleba,3,6,50,2660,,33.46153846,87,False,False,False,False,False,True,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,True,False,sub
+135,Yoane,Wissa,4,5,75,2921,,34.90566038,185,False,False,False,False,True,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,True,starter
+525,Chris,Wood,4,16,75,2958,,35.71428571,200,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,True,False,False,False,False,False,False,False,True,starter
+624,Jarrod,Bowen,4,19,80,2974,,33.85964912,193,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,True,False,False,False,False,True,starter
