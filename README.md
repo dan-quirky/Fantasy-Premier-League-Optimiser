@@ -6,7 +6,7 @@ Uses linear programming to:
 ## What doesn't this do?
 Teach you anything about football (I see this as a bonus)
 ## How to use
-1) Install necessary modules with `pip install -r /path/to/requirements.txt`. 
+1) Open a terminal in repo directory and install necessary modules with `pip install -r requirements.txt` (tested with venv using python 3.12.2) 
 2) Download latest players_raw.csv from [Fantasy-Premier-League](https://github.com/vaastav/Fantasy-Premier-League/tree/master/data )
 	- Alternatively, the repo includes sample data from the 2025-26 pre-season and gameweek 1
 3) Set user variables in "FPLOptimisationCore.py"
