@@ -8,8 +8,6 @@ Default_Data_Path =  "data\Start_2025-6_players_raw.csv" #Expected to be previou
 ######################################################################
 import pandas as pd
 from pulp import *
-from matplotlib import pyplot as plt
-from collections import namedtuple
 
 class Players: 
 
