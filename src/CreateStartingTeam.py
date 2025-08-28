@@ -59,7 +59,7 @@ for squad_budget in p.budget_split:
             subs_positions_bounds,
             subs_teams_dict)
 
-    total_points = starters_points + 0.1 * subs_points #this isn't well motivated, but the subs need to have some contribution to toal points or the model ignores them
+    total_points = starters_points + StartingLineup_Parameters.subs_weighting * subs_points #this isn't well motivated, but the subs need to have some contribution to toal points or the model ignores them
     total_cost = starters_cost + subs_cost
     complete_team_indices = starters_indices + subs_indices
 

@@ -90,7 +90,9 @@ class Parameters:
             }
     per_team = 3 #Max 3 players from each team in the league can be in squad
     tot_gameweeks = 38
-    subs_weighting = 0.1 # Weight subs points to significantly less than starters point. Ensures budget isn't wasted on subs over starters, but forces model to pick best performing subs (as opposed to completely ignoring points contributions from subs)
+    subs_weighting = 0.1
+    # Weight subs points to significantly less than starters point. Ensures budget isn't wasted on subs over starters, but forces model to pick best performing subs (as opposed to completely ignoring points contributions from subs)
+    #To make this a better motivated number, this should represent the probability that a sub will be used in a given game (or equivalently, that a starting player is injured)
     subs_games_threshold = 0.5 #Proportion of games needed to consider a player for subs
     subs_min_games = round(subs_games_threshold * tot_gameweeks)
     starters_positions_bounds = {
@@ -322,29 +324,32 @@ def max_points_transfers_with_subs_model(
     
     subs_contribution_to_total_points = 0 #Ignoring subs points contributions seems most sensible for results
     #Could set this to parameters.subs_weighting, but that's not a well motivated number (it's really just used to ensure the model prioritises subs with more points).  
-    def totalPoints_result() -> int :
-        return (
-                Total_result("points", starters)
-            +   Total_result("points", subs) * subs_contribution_to_total_points #Subs
+    #This MIGHT mean than the optimised team can have an apparently lower total points, 
+    starters_total_points = Total_result("points", starters)
+    subs_total_points = Total_result("points", subs)
+    totalPoints_result = (
+                starters_total_points
+            +   subs_total_points * subs_contribution_to_total_points #Subs
             ) * gameweek_scaling - transfer_points_deducted_result
         
-    def current_players_TotalPoints() -> int :
-        return (
-                sum(all_players_df.loc[id, 'points'] for id in current_starters_ids)
-            +   sum(all_players_df.loc[id, 'points'] for id in current_subs_ids) * subs_contribution_to_total_points 
-        ) * gameweek_scaling
+    current_starters_total_points = sum(all_players_df.loc[id, 'points'] for id in current_starters_ids)
+    current_subs_total_points = sum(all_players_df.loc[id, 'points'] for id in current_subs_ids)
+    current_players_total_points =  (
+            current_starters_total_points
+        +   current_subs_total_points * subs_contribution_to_total_points
+    ) * gameweek_scaling
 
     print(f"numTransfers_result: {numTransfers_result}")
     print(f"transfer_points_deducted_result: {transfer_points_deducted_result}")
     print(f"totalPoints_result: {totalPoints_result}")
     print(f"new_players_ids:{[i for i in all_players_df.index if players_varValue(i) == 1]}")
     print(f"current_players_ids:{current_players_ids}")
-    print(f"current_players_TotalPoints: {current_players_TotalPoints}")
+    print(f"current_players_TotalPoints: {current_players_total_points}")
     
 
 
     ### Calculate and print summary
-    total_points = totalPoints_result()
+    total_points = totalPoints_result
     total_cost = players_bought_cost_result
     budget_remaining = budget + players_sold_cost_result - total_cost
     selected_players = [i for i in all_players_df.index if players_varValue(i) == 1]
@@ -378,6 +383,8 @@ def max_points_transfers_with_subs_model(
         model_teams[team] = len(selected_players_fn_df[selected_players_fn_df[team] == 1].index.tolist())
 
     return {
+        'starters_total_points': starters_total_points,
+        'subs_total_points': subs_total_points,
         'total_points': total_points,
         'total_cost': total_cost,
         'budget_remaining': budget_remaining,
@@ -393,7 +400,10 @@ def max_points_transfers_with_subs_model(
         'players_bought_cost': players_bought_cost_result,
         'numTransfers': numTransfers,
         'transfer_points_deducted': transfer_points_deducted,
-        'current_players_total_points':current_players_TotalPoints()
+        'current_players_ids': current_players_ids,
+        'current_starters_total_points': current_starters_total_points,
+        'current_subs_total_points': current_subs_total_points,
+        'current_players_total_points':current_players_total_points
     }
 
 

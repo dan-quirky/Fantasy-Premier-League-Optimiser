@@ -9,11 +9,11 @@
 # USER INPUT VARIABLES
 ######################################################################
 #update for each gameweek
-current_gameweek = 1 # Used to normalise the expected points data, and scale total points calculation in the objective function by the proportion of game weeks remaining (i.e. the transfer penalty becomes more significant the fewer weeks are left in the season )
-budget = 0 #in millions of £
+current_gameweek = 2 # Used to normalise the expected points data, and scale total points calculation in the objective function by the proportion of game weeks remaining (i.e. the transfer penalty becomes more significant the fewer weeks are left in the season )
+budget = 0.4 #in millions of £
 numFreeTransfers = 1
-current_team_path = r"output\current_team.csv"
-data_path = r"data\players_raw_gw1.csv"
+current_team_path = r"output\current_team_gw2.csv"
+data_path = r"data\players_raw_gw2.csv"
 
 #END
 ######################################################################
@@ -73,7 +73,15 @@ print(f"Bought {", ".join(players_bought_df["web_name"].to_list())} for £{sumCo
 print(f"Budget remaining: £{formatCost(result["budget_remaining"])}")
 print("\n\n")
 
-players_df = starters_df = all_players_df.loc[result["selected_players"]]
+players_df = all_players_df.loc[current_team_df['id']]
+players_df['role'] = ['starter' if i in current_team_df[current_team_df['role'] == 'starter'] else 'sub' for i in players_df.index] #FIXME always returns subs
+players_df = players_df.sort_values(by=["role",'position'])
+players_df = players_df[["position_name", "role", 'web_name', 'cost', 'points']]
+print("Current Squad:")
+print(players_df)
+print("\n\n")
+
+players_df = all_players_df.loc[result["selected_players"]]
 players_df['role'] = ['starter' if i in result["selected_starters"] else 'sub' for i in players_df.index]
 players_df = players_df.sort_values(by=["role",'position'])
 players_df = players_df[["position_name", "role", 'web_name', 'cost', 'points']]
@@ -82,7 +90,9 @@ print(players_df)
 print("\n\n")
 
 print(f"New lineup's expected points, including transfer penalties: {int(result["total_points"])}")
-print(f"(Previous lineup's expected points: {int(result["current_players_total_points"])})")
+print(f"    Raw expected points: Starters: {int(result["starters_total_points"])}, Subs: {int(result["subs_total_points"])}")
+print(f"Previous lineup's expected points: {int(result["current_players_total_points"])}")
+print(f"    Raw expected points: Starters: {int(result["current_starters_total_points"])}, Subs: {int(result["current_subs_total_points"])}")
 print("\n\n")
 
 output_name = f"Transfers_in_gameweek_{current_gameweek}_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv"
